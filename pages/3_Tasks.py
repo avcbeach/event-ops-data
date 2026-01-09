@@ -57,6 +57,41 @@ tasks = tasks.merge(
 tasks["event_name"] = tasks["event_name"].fillna("")
 
 # --------------------------------------------------
+# FILTERS
+# --------------------------------------------------
+st.subheader("Filters")
+
+c1, c2, c3 = st.columns([2,1.2,1.8])
+with c1:
+    q = st.text_input("Search", "")
+with c2:
+    scope = st.selectbox("Scope", ["All"] + SCOPE)
+with c3:
+    status = st.selectbox("Status", ["All"] + TASK_STATUS)
+
+view = tasks.copy()
+
+if scope != "All":
+    view = view[view["scope"] == scope]
+
+if status != "All":
+    view = view[view["status"] == status]
+
+if q.strip():
+    qq = q.lower()
+    view = view[
+        view["task_name"].str.lower().str.contains(qq, na=False) |
+        view["event_name"].str.lower().str.contains(qq, na=False) |
+        view["owner"].str.lower().str.contains(qq, na=False)
+    ]
+
+today = date.today().isoformat()
+view["is_done"] = view["status"] == "Done"
+view = view.sort_values(["is_done","due_date","task_name"])
+
+st.divider()
+
+# --------------------------------------------------
 # TASK LIST (CLICK → POPUP)
 # --------------------------------------------------
 st.subheader("Task list")

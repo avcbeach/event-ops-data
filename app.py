@@ -20,6 +20,40 @@ SCOPE = ["General","Event"]
 today = date.today()
 
 # --------------------------------------------------
+# CSS (KEEP YOUR BADGES)
+# --------------------------------------------------
+st.markdown("""
+<style>
+.day {
+  padding: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+}
+.day.empty {
+  background: #fafafa;
+  border-style: dashed;
+  opacity: 0.85;
+}
+.day.off {
+  background: #ffffff;
+  border: none;
+  opacity: 0.35;
+}
+.badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+.b-ev { background:#e8f1ff; color:#1e40af; }
+.b-tk { background:#fef3c7; color:#92400e; }
+.b-od { background:#fee2e2; color:#991b1b; }
+.small { color:#6b7280; font-size:12px; }
+</style>
+""", unsafe_allow_html=True)
+
+# --------------------------------------------------
 # HELPERS
 # --------------------------------------------------
 def parse_date(s):
@@ -27,9 +61,6 @@ def parse_date(s):
         return datetime.strptime(str(s), "%Y-%m-%d").date()
     except:
         return None
-
-def overlaps(d, s, e):
-    return bool(s and e and s <= d <= e)
 
 def next_int_id(df, col):
     if df.empty:
@@ -80,7 +111,7 @@ c4.metric("Overdue tasks", len(tasks[(tasks["due"]<today)&(tasks["status"]!="Don
 st.divider()
 
 # --------------------------------------------------
-# CALENDAR (CLICK DATE → POPUP)
+# CALENDAR
 # --------------------------------------------------
 st.subheader("Calendar")
 
@@ -90,11 +121,11 @@ with m1:
 with m2:
     month = st.selectbox("Month", list(range(1,13)), index=today.month-1)
 
-# day headers
+# Day names
 dow = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
 hdr = st.columns(7)
-for i, dname in enumerate(dow):
-    hdr[i].markdown(f"**{dname}**")
+for i, name in enumerate(dow):
+    hdr[i].markdown(f"**{name}**")
 
 cal = calendar.Calendar(firstweekday=0)
 weeks = cal.monthdatescalendar(year, month)
@@ -104,21 +135,29 @@ for week in weeks:
     for i, d in enumerate(week):
         with cols[i]:
             if d.month != month:
-                st.markdown(f"<div style='opacity:.3'>{d.day}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='day off'>{d.day}</div>", unsafe_allow_html=True)
                 continue
 
             td = tasks_for_day(d)
             label = f"{d.day} ⭐" if d == today else str(d.day)
 
+            st.markdown(f"<div class='day {'empty' if td.empty else ''}'>", unsafe_allow_html=True)
+
             if st.button(label, key=f"day_{d}"):
                 st.session_state["popup_date"] = d.isoformat()
                 st.session_state["show_day_popup"] = True
 
+            # ✅ RESTORED BADGE STYLE (NO TEXT)
             if not td.empty:
-                st.caption(f"📝 {len(td)} task(s)")
+                st.markdown(
+                    f"<span class='badge b-tk'>🟨 T {len(td)}</span>",
+                    unsafe_allow_html=True
+                )
+
+            st.markdown("</div>", unsafe_allow_html=True)
 
 # --------------------------------------------------
-# DAY POPUP (TASKS + ADD TASK)
+# DAY POPUP
 # --------------------------------------------------
 if st.session_state.get("show_day_popup"):
     d = parse_date(st.session_state.get("popup_date"))
@@ -148,7 +187,6 @@ if st.session_state.get("show_day_popup"):
 
         st.divider()
 
-        # ADD TASK FOR THIS DATE
         st.markdown("### ➕ Add task")
 
         with st.form("add_task_popup"):
