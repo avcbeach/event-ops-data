@@ -132,7 +132,7 @@ def tasks_for_day(d):
     return tasks[tasks["due"] == d].copy()
 
 # --------------------------------------------------
-# 1) DASHBOARD INFO
+# DASHBOARD INFO
 # --------------------------------------------------
 st.subheader("1) Dashboard")
 
@@ -149,55 +149,7 @@ c4.metric("Overdue tasks", len(overdue))
 st.divider()
 
 # --------------------------------------------------
-# 2) DAY AGENDA
-# --------------------------------------------------
-st.subheader("2) Day agenda")
-
-default_agenda = st.session_state.get("agenda_date")
-if isinstance(default_agenda, str):
-    default_agenda = parse_date(default_agenda)
-
-agenda_day = st.date_input("Select date", value=default_agenda or today)
-st.session_state["agenda_date"] = agenda_day.isoformat()
-
-st.markdown(f"**Selected date:** {agenda_day.isoformat()}")
-
-# Events
-st.markdown("### 🏐 Events")
-ev = events_for_day(agenda_day)
-if ev.empty:
-    st.info("No events.")
-else:
-    ev["is_ongoing"] = (ev["status"].astype(str).str.lower() == "ongoing").astype(int)
-    ev = ev.sort_values(["is_ongoing","start_date","event_name"], ascending=[False, True, True])
-    for _, r in ev.iterrows():
-        icon = "🟩" if str(r["status"]).lower() == "ongoing" else "🟦"
-        line = f"{icon} {r['event_name']} — {r['location']} ({r['start_date']} → {r['end_date']})"
-        if st.button(line, key=f"ag_ev_{agenda_day.isoformat()}_{r['event_id']}"):
-            open_event(r["event_id"])
-
-# Tasks due
-st.markdown("### 📝 Tasks due")
-td = tasks_for_day(agenda_day)
-if td.empty:
-    st.info("No tasks.")
-else:
-    td["is_over"] = ((td["status"].astype(str).str.lower() != "done") & (td["due"].notna()) & (td["due"] < today)).astype(int)
-    td = td.sort_values(["is_over","scope","event_name","task_name"], ascending=[False, True, True, True])
-
-    for _, r in td.iterrows():
-        overdue_icon = "🔴" if r["is_over"] == 1 else "🟨"
-        scope = "General" if str(r["scope"]).lower() == "general" else (r["event_name"] or "Event")
-        owner = f" — {r['owner']}" if str(r["owner"]).strip() else ""
-        status = f" [{r['status']}]" if str(r["status"]).strip() else ""
-        line = f"{overdue_icon} {r['task_name']} — {scope}{owner}{status}"
-        if st.button(line, key=f"ag_tk_{agenda_day.isoformat()}_{r['task_id']}"):
-            open_task(r["task_id"])
-
-st.divider()
-
-# --------------------------------------------------
-# 3) CALENDAR (MONTH VIEW)
+# CALENDAR (MONTH VIEW)
 # --------------------------------------------------
 st.subheader("3) Calendar")
 
@@ -259,7 +211,55 @@ for week in weeks:
 st.divider()
 
 # --------------------------------------------------
-# 4) LEGENDS (AT THE BOTTOM)
+# DAY AGENDA
+# --------------------------------------------------
+st.subheader("2) Day agenda")
+
+default_agenda = st.session_state.get("agenda_date")
+if isinstance(default_agenda, str):
+    default_agenda = parse_date(default_agenda)
+
+agenda_day = st.date_input("Select date", value=default_agenda or today)
+st.session_state["agenda_date"] = agenda_day.isoformat()
+
+st.markdown(f"**Selected date:** {agenda_day.isoformat()}")
+
+# Events
+st.markdown("### 🏐 Events")
+ev = events_for_day(agenda_day)
+if ev.empty:
+    st.info("No events.")
+else:
+    ev["is_ongoing"] = (ev["status"].astype(str).str.lower() == "ongoing").astype(int)
+    ev = ev.sort_values(["is_ongoing","start_date","event_name"], ascending=[False, True, True])
+    for _, r in ev.iterrows():
+        icon = "🟩" if str(r["status"]).lower() == "ongoing" else "🟦"
+        line = f"{icon} {r['event_name']} — {r['location']} ({r['start_date']} → {r['end_date']})"
+        if st.button(line, key=f"ag_ev_{agenda_day.isoformat()}_{r['event_id']}"):
+            open_event(r["event_id"])
+
+# Tasks due
+st.markdown("### 📝 Tasks due")
+td = tasks_for_day(agenda_day)
+if td.empty:
+    st.info("No tasks.")
+else:
+    td["is_over"] = ((td["status"].astype(str).str.lower() != "done") & (td["due"].notna()) & (td["due"] < today)).astype(int)
+    td = td.sort_values(["is_over","scope","event_name","task_name"], ascending=[False, True, True, True])
+
+    for _, r in td.iterrows():
+        overdue_icon = "🔴" if r["is_over"] == 1 else "🟨"
+        scope = "General" if str(r["scope"]).lower() == "general" else (r["event_name"] or "Event")
+        owner = f" — {r['owner']}" if str(r["owner"]).strip() else ""
+        status = f" [{r['status']}]" if str(r["status"]).strip() else ""
+        line = f"{overdue_icon} {r['task_name']} — {scope}{owner}{status}"
+        if st.button(line, key=f"ag_tk_{agenda_day.isoformat()}_{r['task_id']}"):
+            open_task(r["task_id"])
+
+st.divider()
+
+# --------------------------------------------------
+# LEGENDS (AT THE BOTTOM)
 # --------------------------------------------------
 st.subheader("4) Legends")
 
