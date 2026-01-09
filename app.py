@@ -5,23 +5,31 @@ from datetime import date, datetime, timedelta
 
 from lib.data_store import read_csv
 
-# ---- CLEAR NAVIGATION STATE (IMPORTANT) ----
+# --------------------------------------------------
+# CLEAR NAV STATE (PREVENT AUTO REDIRECT)
+# --------------------------------------------------
 st.session_state.pop("selected_task_id", None)
 st.session_state.pop("selected_event_id", None)
 
-# ---------------- PAGE SETUP ----------------
+# --------------------------------------------------
+# PAGE SETUP
+# --------------------------------------------------
 st.set_page_config(page_title="Event Ops", layout="wide")
 st.title("🏐 Event Operations Dashboard")
 
-# ---------------- SCHEMAS ----------------
+# --------------------------------------------------
+# SCHEMAS
+# --------------------------------------------------
 EVENT_COLS = ["event_id","event_name","location","start_date","end_date","status"]
 TASK_COLS  = ["task_id","scope","event_id","task_name","due_date","owner","status","priority","category","notes"]
 
-# ---------------- CSS (CALENDAR UI) ----------------
+# --------------------------------------------------
+# CSS (CALENDAR + PILL BUTTONS)
+# --------------------------------------------------
 st.markdown("""
 <style>
 .day-cell {
-    height: 170px;
+    height: 180px;
     padding: 6px;
     border-radius: 10px;
     border: 1px solid #e5e7eb;
@@ -33,34 +41,34 @@ st.markdown("""
     font-size: 14px;
     margin-bottom: 4px;
 }
-.pill {
-    display: block;
+
+.pill-btn button {
+    width: 100%;
     padding: 2px 6px;
     margin-bottom: 4px;
     border-radius: 6px;
     font-size: 12px;
+    text-align: left;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    cursor: pointer;
 }
-.ev-blue { background:#e8f1ff; color:#1e40af; }
-.ev-green { background:#e9f7ef; color:#065f46; }
-.ev-grey { background:#f3f4f6; color:#374151; }
-.ev-red { background:#fee2e2; color:#991b1b; }
 
-.tk-yellow { background:#fef3c7; color:#92400e; }
-.tk-purple { background:#ede9fe; color:#5b21b6; }
+/* Event colors */
+.ev-blue button { background:#e8f1ff; color:#1e40af; }
+.ev-green button { background:#e9f7ef; color:#065f46; }
+.ev-grey button { background:#f3f4f6; color:#374151; }
+.ev-red button { background:#fee2e2; color:#991b1b; }
 
-.more {
-    font-size: 12px;
-    color: #2563eb;
-    cursor: pointer;
-}
+/* Task colors */
+.tk-yellow button { background:#fef3c7; color:#92400e; }
+.tk-purple button { background:#ede9fe; color:#5b21b6; }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- HELPERS ----------------
+# --------------------------------------------------
+# HELPERS
+# --------------------------------------------------
 def parse_date(s):
     try:
         return datetime.strptime(str(s), "%Y-%m-%d").date()
@@ -80,9 +88,6 @@ def event_class(status):
         return "ev-red"
     return "ev-blue"
 
-def pill_html(text, css):
-    return f"<div class='pill {css}' title='{text}'>{text}</div>"
-
 def open_event(eid):
     st.session_state["selected_event_id"] = eid
     st.switch_page("pages/2_Event_Detail.py")
@@ -94,7 +99,9 @@ def open_task(tid):
 def popover_or_expander(label):
     return st.popover(label) if hasattr(st, "popover") else st.expander(label)
 
-# ---------------- LOAD DATA ----------------
+# --------------------------------------------------
+# LOAD DATA (GITHUB-BACKED)
+# --------------------------------------------------
 events = read_csv("data/events.csv", EVENT_COLS)
 tasks  = read_csv("data/tasks.csv", TASK_COLS)
 
@@ -119,7 +126,9 @@ tasks = tasks.merge(
 )
 tasks["event_name"] = tasks["event_name"].fillna("")
 
-# ---------------- SUMMARY ----------------
+# --------------------------------------------------
+# SUMMARY
+# --------------------------------------------------
 ongoing = events[(events["start"] <= today) & (events["end"] >= today)]
 upcoming = events[(events["start"] > today) & (events["start"] <= today + timedelta(days=14))]
 overdue = tasks[(tasks["due"] < today) & (tasks["status"].str.lower() != "done")]
@@ -132,7 +141,9 @@ c4.metric("Overdue tasks", len(overdue))
 
 st.divider()
 
-# ---------------- CALENDAR CONTROLS ----------------
+# --------------------------------------------------
+# CALENDAR CONTROLS
+# --------------------------------------------------
 st.subheader("🗓️ Monthly calendar")
 
 m1,m2,m3 = st.columns([2,2,6])
@@ -160,59 +171,71 @@ for i, name in enumerate(dow):
 
 MAX_ITEMS = 3
 
-# ---------------- CALENDAR GRID ----------------
+# --------------------------------------------------
+# CALENDAR GRID (FIXED + SAFE)
+# --------------------------------------------------
 for week in weeks:
     cols = st.columns(7, gap="small")
     for i, d in enumerate(week):
         with cols[i]:
             st.markdown("<div class='day-cell'>", unsafe_allow_html=True)
 
-            if d.month != month:
-                st.markdown(f"<div class='day-header'>{d.day}</div>", unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-                continue
+            st.markdown(
+                f"<div class='day-header'>{d.day}{' ⭐' if d == today else ''}</div>",
+                unsafe_allow_html=True
+            )
 
-            header = f"{d.day} ⭐" if d == today else str(d.day)
-            if st.button(header, key=f"day_{d.isoformat()}"):
-                st.session_state["agenda_date"] = d.isoformat()
+            if d.month == month:
+                if st.button("Agenda", key=f"day_{d.isoformat()}"):
+                    st.session_state["agenda_date"] = d.isoformat()
 
-            ev = events_for_day(d)
-            td = tasks_for_day(d)
+                ev = events_for_day(d)
+                td = tasks_for_day(d)
 
-            shown = 0
+                shown = 0
 
-            # events
-            for _, r in ev.iterrows():
-                if shown >= MAX_ITEMS:
-                    break
-                html = pill_html(r["event_name"], event_class(r["status"]))
-                if st.markdown(html, unsafe_allow_html=True):
-                    open_event(r["event_id"])
-                shown += 1
-
-            # tasks
-            for _, r in td.iterrows():
-                if shown >= MAX_ITEMS:
-                    break
-                css = "tk-purple" if r["scope"] == "Event" else "tk-yellow"
-                html = pill_html(r["task_name"], css)
-                if st.markdown(html, unsafe_allow_html=True):
-                    open_task(r["task_id"])
-                shown += 1
-
-            remaining = len(ev) + len(td) - shown
-            if remaining > 0:
-                with popover_or_expander(f"+{remaining} more"):
-                    for _, r in ev.iterrows():
-                        if st.button(r["event_name"], key=f"pev_{d}_{r['event_id']}"):
+                for _, r in ev.iterrows():
+                    if shown >= MAX_ITEMS:
+                        break
+                    with st.container():
+                        st.markdown(f"<div class='pill-btn {event_class(r['status'])}'>", unsafe_allow_html=True)
+                        if st.button(
+                            r["event_name"],
+                            key=f"cal_ev_{d.isoformat()}_{r['event_id']}"
+                        ):
                             open_event(r["event_id"])
-                    for _, r in td.iterrows():
-                        if st.button(r["task_name"], key=f"ptk_{d}_{r['task_id']}"):
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    shown += 1
+
+                for _, r in td.iterrows():
+                    if shown >= MAX_ITEMS:
+                        break
+                    css = "tk-purple" if r["scope"] == "Event" else "tk-yellow"
+                    with st.container():
+                        st.markdown(f"<div class='pill-btn {css}'>", unsafe_allow_html=True)
+                        if st.button(
+                            r["task_name"],
+                            key=f"cal_tk_{d.isoformat()}_{r['task_id']}"
+                        ):
                             open_task(r["task_id"])
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    shown += 1
+
+                remaining = len(ev) + len(td) - shown
+                if remaining > 0:
+                    with popover_or_expander(f"+{remaining} more"):
+                        for _, r in ev.iterrows():
+                            if st.button(r["event_name"], key=f"pev_{d}_{r['event_id']}"):
+                                open_event(r["event_id"])
+                        for _, r in td.iterrows():
+                            if st.button(r["task_name"], key=f"ptk_{d}_{r['task_id']}"):
+                                open_task(r["task_id"])
 
             st.markdown("</div>", unsafe_allow_html=True)
 
-# ---------------- AGENDA ----------------
+# --------------------------------------------------
+# DAY AGENDA
+# --------------------------------------------------
 st.divider()
 st.subheader("📌 Day agenda")
 
@@ -220,7 +243,7 @@ agenda_iso = st.session_state.get("agenda_date")
 agenda_day = parse_date(agenda_iso) if agenda_iso else None
 
 if not agenda_day:
-    st.info("Click a day number in the calendar to view agenda.")
+    st.info("Click Agenda on a day to view details.")
 else:
     st.write(f"**{agenda_day.isoformat()}**")
 
