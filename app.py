@@ -224,7 +224,8 @@ for week in weeks:
             empty = len(ev_d)==0 and len(td_d)==0
 
             st.markdown(f"<div class='day {'empty' if empty else ''}'>", unsafe_allow_html=True)
-            if st.button(str(d.day), key=f"d_{d}"):
+            label = f"{d.day} ⭐" if d == today else str(d.day)
+            if st.button(label, key=f"d_{d}"):
                 st.session_state["agenda_date"] = d.isoformat()
                 st.rerun()
 
