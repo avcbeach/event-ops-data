@@ -4,3 +4,4 @@ task_id,event_id,task_name,due_date,owner,status,notes,scope,priority,category
 3,45aa5227-b88a-4324-b01e-19e69e992844,Send mail address to receive accreditation card,2026-01-12,AVC,Not started,"- Replace new referee: AUS Peter Bawhey
 - Mr. Chen Yan Zai",Event,Top,Event
 4,,AVC Strategic Planning Workshop,2026-01-16,Me,In progress,Presentation Done,General,,
+5,5dd7fee9-aeea-47aa-9d6e-7304d555e1e0,Confirm qualification pathway to FIVB,2026-01-23,AVC Beach Committee,In progress,Sent to AVC Beach Committee to consider,Event,Top,event
