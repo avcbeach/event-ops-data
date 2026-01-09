@@ -107,19 +107,6 @@ def tasks_for_day(d):
     return tasks[tasks["due"] == d]
 
 # --------------------------------------------------
-# 1) DASHBOARD
-# --------------------------------------------------
-st.subheader("Dashboard")
-
-c1,c2,c3,c4 = st.columns(4)
-c1.metric("Events", len(events))
-c2.metric("Ongoing", len(events[(events["start"]<=today)&(events["end"]>=today)]))
-c3.metric("Upcoming 14d", len(events[(events["start"]>today)&(events["start"]<=today+timedelta(days=14))]))
-c4.metric("Overdue tasks", len(tasks[(tasks["due"]<today)&(tasks["status"]!="Done")]))
-
-st.divider()
-
-# --------------------------------------------------
 # 2) DAY AGENDA
 # --------------------------------------------------
 st.subheader("Day agenda")
