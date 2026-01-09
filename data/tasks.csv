@@ -1,3 +1,5 @@
-task_id,event_id,task_name,due_date,owner,status,notes
-1,28ff9c4d-c3f5-4049-8c2f-84b22a1eb210,Registration Deadline,2026-01-24,AVC,Not started,
-2,28ff9c4d-c3f5-4049-8c2f-84b22a1eb210,Confirmed entry list,2026-01-31,AVC,Not started,
+task_id,event_id,task_name,due_date,owner,status,notes,scope,priority,category
+1,28ff9c4d-c3f5-4049-8c2f-84b22a1eb210,Registration Deadline,2026-01-24,AVC,Not started,,Event,,
+2,28ff9c4d-c3f5-4049-8c2f-84b22a1eb210,Confirmed entry list,2026-01-31,AVC,Not started,,Event,,
+3,45aa5227-b88a-4324-b01e-19e69e992844,Send mail address to receive accreditation card,2026-01-12,AVC,Not started,"- Replace new referee: AUS Peter Bawhey
+- Mr. Chen Yan Zai",Event,Top,Event
