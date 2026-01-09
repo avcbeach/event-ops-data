@@ -9,6 +9,21 @@ STATUS_OPTIONS = ["Planned", "Open", "Confirmed", "Ongoing", "Completed", "Cance
 
 events = read_csv("data/events.csv", EVENT_COLS)
 
+st.subheader("Open event")
+
+if events.empty:
+    st.info("Add an event first.")
+else:
+    pick = st.selectbox(
+        "Select",
+        [f"{r['event_name']} ({r['event_id']})" for _, r in events.iterrows()]
+    )
+    if st.button("Open selected event"):
+        eid = pick.split("(")[-1].replace(")", "").strip()
+        st.session_state["selected_event_id"] = eid
+        st.switch_page("pages/2_Event_Detail.py")
+
+st.divider()
 st.subheader("Event list")
 if events.empty:
     st.info("No events yet.")
@@ -45,18 +60,3 @@ if add:
         write_csv("data/events.csv", events, f"Add event {event_id.strip()}")
         st.success("Added.")
         st.rerun()
-
-st.divider()
-st.subheader("Open event")
-
-if events.empty:
-    st.info("Add an event first.")
-else:
-    pick = st.selectbox(
-        "Select",
-        [f"{r['event_name']} ({r['event_id']})" for _, r in events.iterrows()]
-    )
-    if st.button("Open selected event"):
-        eid = pick.split("(")[-1].replace(")", "").strip()
-        st.session_state["selected_event_id"] = eid
-        st.switch_page("pages/2_Event_Detail.py")
