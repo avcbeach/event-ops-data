@@ -24,7 +24,7 @@ TASK_STATUS = ["Not started","In progress","Done","Blocked"]
 SCOPE = ["General","Event"]
 
 # --------------------------------------------------
-# CSS (COMPACT, NO CLUTTER)
+# CSS (CLEAN + COMPACT)
 # --------------------------------------------------
 st.markdown("""
 <style>
@@ -51,7 +51,6 @@ st.markdown("""
   font-size: 12px;
 }
 .b-ev { background:#e8f1ff; color:#1e40af; }
-.b-on { background:#e9f7ef; color:#065f46; }
 .b-tk { background:#fef3c7; color:#92400e; }
 .b-od { background:#fee2e2; color:#991b1b; }
 .small { color:#6b7280; font-size:12px; }
@@ -121,7 +120,7 @@ c4.metric("Overdue tasks", len(tasks[(tasks["due"]<today)&(tasks["status"]!="Don
 st.divider()
 
 # --------------------------------------------------
-# 2) DAY AGENDA (THIS IS WHERE YOU ADD TASK)
+# 2) DAY AGENDA
 # --------------------------------------------------
 st.subheader("Day agenda")
 
@@ -153,7 +152,6 @@ else:
         if st.button(f"{icon} {r['task_name']} — {label}", key=f"tk_{r['task_id']}"):
             open_task(r["task_id"])
 
-# -------- ADD TASK (ONLY HERE) --------
 with st.expander("➕ Add task for this date"):
     with st.form("add_task"):
         scope_in = st.selectbox("Scope", SCOPE)
@@ -194,7 +192,7 @@ with st.expander("➕ Add task for this date"):
 st.divider()
 
 # --------------------------------------------------
-# 3) CALENDAR (OVERVIEW ONLY)
+# 3) CALENDAR (WITH DAY NAMES)
 # --------------------------------------------------
 st.subheader("Calendar")
 
@@ -204,7 +202,13 @@ with m1:
 with m2:
     month = st.selectbox("Month", list(range(1,13)), index=today.month-1)
 
-cal = calendar.Calendar()
+# --- DAY NAME HEADER ---
+dow = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+hdr = st.columns(7)
+for i, name in enumerate(dow):
+    hdr[i].markdown(f"**{name}**")
+
+cal = calendar.Calendar(firstweekday=0)
 weeks = cal.monthdatescalendar(year, month)
 
 for week in weeks:
