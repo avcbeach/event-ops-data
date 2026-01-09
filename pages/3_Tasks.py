@@ -22,6 +22,10 @@ def next_int_id(df, col):
     s = pd.to_numeric(df[col], errors="coerce").dropna()
     return int(s.max()) + 1 if not s.empty else 1
 
+def open_event(eid):
+    st.session_state["selected_event_id"] = eid
+    st.switch_page("pages/2_Event_Detail.py")
+
 # --------------------------------------------------
 # PAGE
 # --------------------------------------------------
@@ -37,20 +41,19 @@ tasks.loc[blank & tasks["event_id"].astype(str).str.strip().ne(""), "scope"] = "
 tasks.loc[blank & tasks["event_id"].astype(str).str.strip().eq(""), "scope"] = "General"
 
 # enrich event name
-if not tasks.empty and not events.empty:
-    tasks = tasks.merge(
-        events[["event_id","event_name"]],
-        on="event_id",
-        how="left"
-    )
-    tasks["event_name"] = tasks["event_name"].fillna("")
-else:
-    tasks["event_name"] = ""
+tasks = tasks.merge(
+    events[["event_id","event_name"]],
+    on="event_id",
+    how="left"
+)
+tasks["event_name"] = tasks["event_name"].fillna("")
 
 # --------------------------------------------------
-# HANDLE NAV FROM HOMEPAGE
+# HANDLE NAV FROM HOMEPAGE (CLICKING A TASK)
 # --------------------------------------------------
-selected_task_id = st.session_state.pop("selected_task_id", None)
+nav_task_id = st.session_state.pop("selected_task_id", None)
+if nav_task_id:
+    st.session_state["current_task_id"] = str(nav_task_id)
 
 # --------------------------------------------------
 # FILTERS (TOP)
@@ -66,10 +69,6 @@ with c3:
     status = st.selectbox("Status", ["All"] + TASK_STATUS, index=0)
 
 view = tasks.copy()
-
-if selected_task_id:
-    view = view[view["task_id"].astype(str) == str(selected_task_id)]
-    st.info(f"Showing selected task (ID: {selected_task_id})")
 
 if scope != "All":
     view = view[view["scope"].str.lower() == scope.lower()]
@@ -107,24 +106,19 @@ else:
         use_container_width=True,
         num_rows="dynamic",
         column_config={
-            "status": st.column_config.SelectboxColumn(
-                "status",
-                options=TASK_STATUS
-            ),
-            "scope": st.column_config.SelectboxColumn(
-                "scope",
-                options=SCOPE
-            ),
+            "status": st.column_config.SelectboxColumn("status", options=TASK_STATUS),
+            "scope": st.column_config.SelectboxColumn("scope", options=SCOPE),
             "delete": st.column_config.CheckboxColumn("delete"),
         }
     )
 
-    c1, c2 = st.columns(2)
+    c1, c2, c3 = st.columns([1,1,2])
 
     with c1:
         if st.button("Save changes"):
             base = read_csv("data/tasks.csv", TASK_COLS)
-            base = base[~base["task_id"].isin(edited["task_id"].astype(str))].copy()
+            # remove rows being replaced
+            base = base[~base["task_id"].astype(str).isin(edited["task_id"].astype(str))].copy()
             out = pd.concat(
                 [base, edited.drop(columns=["delete","event_name"], errors="ignore")],
                 ignore_index=True
@@ -140,9 +134,92 @@ else:
                 st.warning("No tasks selected.")
             else:
                 base = read_csv("data/tasks.csv", TASK_COLS)
-                out = base[~base["task_id"].isin(to_del["task_id"].astype(str))].copy()
+                out = base[~base["task_id"].astype(str).isin(to_del["task_id"].astype(str))].copy()
                 write_csv("data/tasks.csv", out, "Delete tasks")
                 st.success(f"Deleted {len(to_del)} task(s).")
+                st.rerun()
+
+    with c3:
+        # selector for detail view (table-first, details right after)
+        options = edited["task_id"].astype(str).tolist()
+        default_id = st.session_state.get("current_task_id")
+        if default_id not in options:
+            default_id = options[0] if options else None
+
+        selected_id = st.selectbox(
+            "Show details for task",
+            options=options,
+            index=options.index(default_id) if default_id in options else 0,
+            key="task_detail_picker"
+        )
+        st.session_state["current_task_id"] = selected_id
+
+# --------------------------------------------------
+# TASK DETAILS BLOCK (UNDER TABLE)
+# --------------------------------------------------
+st.divider()
+st.subheader("Task details")
+
+current_id = st.session_state.get("current_task_id")
+
+if not current_id or tasks.empty:
+    st.info("Select a task to view details.")
+else:
+    row = tasks[tasks["task_id"].astype(str) == str(current_id)]
+    if row.empty:
+        st.info("Selected task not found.")
+    else:
+        t = row.iloc[0]
+
+        # display card-like block
+        left, right = st.columns([3,2])
+
+        with left:
+            st.markdown(f"### 📝 {t['task_name']}")
+            st.write(f"**Task ID:** {t['task_id']}")
+            st.write(f"**Scope:** {t['scope']}")
+
+            if str(t["event_id"]).strip():
+                st.write(f"**Event:** {t['event_name']}  \n**Event ID:** {t['event_id']}")
+                if st.button("Open event page", key=f"open_event_{t['event_id']}"):
+                    open_event(t["event_id"])
+            else:
+                st.write("**Event:** (General task)")
+
+            st.write(f"**Due date:** {t['due_date']}")
+            st.write(f"**Owner:** {t['owner']}")
+            st.write(f"**Status:** {t['status']}")
+
+        with right:
+            st.write(f"**Priority:** {t['priority']}")
+            st.write(f"**Category:** {t['category']}")
+            st.write("**Notes:**")
+            st.write(t["notes"] if str(t["notes"]).strip() else "—")
+
+        # quick edit (optional, but very useful)
+        with st.expander("Quick update this task"):
+            with st.form(f"quick_update_{t['task_id']}"):
+                new_status = st.selectbox("Status", TASK_STATUS, index=TASK_STATUS.index(t["status"]) if t["status"] in TASK_STATUS else 0)
+                new_owner = st.text_input("Owner", value=str(t["owner"]))
+                new_due = st.text_input("Due date (YYYY-MM-DD)", value=str(t["due_date"]))
+                new_priority = st.text_input("Priority", value=str(t["priority"]))
+                new_category = st.text_input("Category", value=str(t["category"]))
+                new_notes = st.text_area("Notes", value=str(t["notes"]))
+
+                save_one = st.form_submit_button("Save this task")
+
+            if save_one:
+                base = read_csv("data/tasks.csv", TASK_COLS)
+                mask = base["task_id"].astype(str) == str(t["task_id"])
+                base.loc[mask, "status"] = new_status
+                base.loc[mask, "owner"] = new_owner
+                base.loc[mask, "due_date"] = new_due
+                base.loc[mask, "priority"] = new_priority
+                base.loc[mask, "category"] = new_category
+                base.loc[mask, "notes"] = new_notes
+
+                write_csv("data/tasks.csv", base, f"Quick update task {t['task_id']}")
+                st.success("Task updated.")
                 st.rerun()
 
 # --------------------------------------------------
@@ -195,4 +272,5 @@ if add:
     base = pd.concat([base, pd.DataFrame([row])], ignore_index=True)
     write_csv("data/tasks.csv", base, f"Add task {new_id}")
     st.success("Task added.")
+    st.session_state["current_task_id"] = new_id
     st.rerun()
